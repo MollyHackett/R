@@ -1,0 +1,67 @@
+---
+title: "Tutorial 8"
+author: "Molly Hackett"
+date: "October 31, 2019"
+output: 
+  html_document: 
+    code_folding: hide
+---
+
+
+## set Up
+
+
+```{r libraries, message=F, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(leaflet)
+library(httpuv)
+```
+
+
+
+```{r load-data, message=F, warning=FALSE}
+stops <- read_csv("https://datajournalism.tech/wp-content/uploads/2019/10/wichita.csv")
+
+population_2016 <- tibble(subject_race = c("asian/pacific islander", "black", "hispanic", "other/unknown", "white"),
+ num_people = c(19272, 42679, 63659, 12978, 246343)) %>% 
+  mutate(subject_race = as.factor(subject_race))
+center_lat <- 37.671283
+center_lng <- -97.346102
+```
+
+## Data Analysis
+```{r}
+race <- stops %>%  
+  group_by(subject_race) %>% 
+  summarize(
+    n = n(),
+    prop = n / nrow(.)
+  ) %>% 
+  mutate(subject_race=as.factor(subject_race))
+```
+
+```{r}
+  stop_rate <- left_join(race,population_2016,
+    by = "subject_race"
+  ) %>% 
+  mutate(stop_rate = n / num_people)
+```
+
+
+## Data Visualizations
+```{r}
+ggplot(stop_rate, aes(x=reorder(subject_race, stop_rate), y=stop_rate, fill=subject_race))+
+  geom_bar(stat="identity")+
+  coord_flip()
+```
+
+```{r}
+race <- colorFactor(c("pink", "black", "yellow", "red", "blue"), domain=c("white", "black",  "asian/pacific islander", "hispanic", "other/unknown"), ordered=TRUE)
+
+leaflet(stops) %>%
+  addProviderTiles(providers$OpenStreetMap)%>% 
+  setView(lat = 37.671283, lng = -97.346102, zoom=16) %>% 
+  addCircleMarkers(~lng, ~lat, popup= paste("This is a", stops$subject_race, "and", stops$subject_sex, "driver."), weight=3, radius=4, color=~race(subject_race), stroke=F, fillOpacity = 1)
+```
+
